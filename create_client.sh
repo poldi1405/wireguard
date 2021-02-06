@@ -7,12 +7,12 @@ PUSH_ROUTE_ALL="0.0.0.0/0, ::/0"
 PUSH_ROUTE_INTRANET="192.168.x.0/24, 192.168.x.0/24"
 SERVER_CONFIG='wg0.conf'
 IP_RANGE='192.168.x.1 and 192.168.x.253'
-read -p "Enter Client Name:" client_name_temp
-read -p "Push All Routes ? If not only Intranet will be routed (y/n):" confirmRoutes
+read -p "Enter Client Name: " client_name_temp
+read -p "Push All Routes? If not only Intranet will be routed (y/n): " confirmRoutes
 echo "What do you want the client IP to be,must be between ${IP_RANGE} ?:"
-echo "These Ips are already used:"
-grep AllowedIPs ${SERVER_CONFIG}
-read -p "Enter client IP you want to assign:" clientIP
+echo "These Ips are already used: "
+grep AllowedIPs ${SERVER_CONFIG} | sed -e 's/AllowedIPs = //'
+read -p "Enter client IP you want to assign: " clientIP
 
 if [ "${confirmRoutes}" == 'y' ];then
         PUSH_ROUTE=${PUSH_ROUTE_ALL}
@@ -48,9 +48,6 @@ AllowedIPs = ${PUSH_ROUTE}
 Endpoint = ${SERVER_IP}:${LISTEN_PORT}
 EOF
 
-# append config to server
-systemctl stop wg-quick@wg0
-
 echo "Appending Configuration to Server Config ${SERVER_CONFIG}"
 cat << EOF >> ${SERVER_CONFIG}
 
@@ -67,4 +64,5 @@ echo "Client Configuration"
 echo "######################################################"
 cat ${destination_file}.conf
 
-systemctl restart wg-quick@wg0
+# perform a hot-reload
+wg syncconf ${SERVER_CONFIG:-.*} <(wg-quick strip ${SERVER_CONFIG:-.*})
